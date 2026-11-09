@@ -1,0 +1,27 @@
+# Render Blueprint: New > Blueprint > pick this repo. See docs/deployment.md.
+services:
+  - type: web
+    name: secure-messenger
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        sync: false # paste your Neon connection string (with ?sslmode=require)
+      - key: PUBLIC_ORIGIN
+        sync: false # e.g. https://secure-messenger-xxxx.onrender.com
+      - key: CLIENT_IP_HEADER
+        value: true-client-ip
+      - key: GOOGLE_CLIENT_ID
+        sync: false # OAuth Web client ID (redirect URI: https://<app>.onrender.com/auth/google/callback)
+      # Render's free tier blocks outbound SMTP, so email goes through Brevo's HTTPS API.
+      - key: EMAIL_PROVIDER
+        value: brevo
+      - key: BREVO_API_KEY
+        sync: false # from brevo.com → SMTP & API → API keys; set in the dashboard, never commit it
+      - key: SMTP_FROM_EMAIL
+        sync: false # a sender address verified in Brevo (e.g. your Gmail address)

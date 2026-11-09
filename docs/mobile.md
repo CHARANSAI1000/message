@@ -1,0 +1,46 @@
+# ForYou Android & iPhone apps
+
+The native apps are built with [Capacitor](https://capacitorjs.com) from the same React code.
+
+- **App ID:** `com.charansai.foryou` (permanent once published)
+- **App name:** ForYou
+- **Projects:** `frontend/android` (Android Studio) and `frontend/ios` (Xcode)
+- **Icons / splash sources:** `frontend/assets/` (regenerate with `npx @capacitor/assets generate`)
+
+The apps load your **hosted** ForYou site (`CAP_SERVER_URL`), so sign-in, the strict security policy and all API calls behave exactly as on the web. The site must be online over HTTPS first (see [deployment.md](deployment.md)).
+
+## Built-in protections
+
+| | Android | iPhone |
+|---|---|---|
+| Screenshots / screen recording | **Blocked** (`FLAG_SECURE`, shows black) | Not blockable by any app on iOS; screen-recording blanking is planned |
+| App preview in recent apps | Hidden | Planned |
+| Backups of app data (encryption keys) | **Disabled** (cloud backup and device transfer) | – |
+
+## Build an Android APK to share
+
+Requirements: [Android Studio](https://developer.android.com/studio). Open it once and let it install the Android SDK.
+
+```bash
+make apk CAP_SERVER_URL=https://<your-app>.onrender.com
+# -> frontend/android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+Send `app-debug.apk` to friends. On their phone: open the file, allow "Install unknown apps", then Install.
+
+For the Play Store you need a **release** build signed with your own key (Android Studio → Build → Generate Signed App Bundle). Back up the keystore and passwords: without them you can never update the app.
+
+## Build for iPhone
+
+Requirements: Xcode (Mac App Store), and for other people's iPhones an Apple Developer Program membership ($99/year).
+
+```bash
+make ios CAP_SERVER_URL=https://<your-app>.onrender.com   # opens Xcode
+```
+
+In Xcode: select the **App** target → Signing & Capabilities → choose your Team, then Product → Archive → Distribute (TestFlight / App Store).
+
+## Known gaps (next steps)
+
+- **Google sign-in in the apps:** Google blocks sign-in inside embedded app views, so it must open the phone's browser and return through a deep link (needs an Android SHA-1 / iOS bundle setup in Google Cloud). Email and code sign-in work now.
+- Push notifications with sound/vibration/ringtone (Firebase / APNs), phone contacts, profile pictures, iOS screen-capture protection.

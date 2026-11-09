@@ -1,0 +1,15 @@
+**/node_modules
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/dist
+**/.env
+**/.env.*
+backend/static
+backend/tests
+.git
+.github
+docs
+frontend/android
+frontend/ios
+frontend/assets

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ForYou</string>
+    <string name="title_activity_main">ForYou</string>
+    <string name="package_name">com.charansai.foryou</string>
+    <string name="custom_url_scheme">com.charansai.foryou</string>
+</resources>

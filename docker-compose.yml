@@ -1,0 +1,44 @@
+# Local stack. `make docker` runs everything; `make db` runs only PostgreSQL for local development.
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: messenger
+      POSTGRES_USER: messenger
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${DB_PORT:-5440}:5432" # localhost only, for the dev backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U messenger -d messenger"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://messenger:${POSTGRES_PASSWORD}@db:5432/messenger
+      ENVIRONMENT: development
+      PUBLIC_ORIGIN: http://localhost:${APP_PORT:-8080}
+      EXTRA_ALLOWED_ORIGINS: http://127.0.0.1:${APP_PORT:-8080}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-smtp}
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-no-reply@example.com}
+    ports:
+      - "127.0.0.1:${APP_PORT:-8080}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: ["no-new-privileges:true"]
+
+volumes:
+  postgres_data:
