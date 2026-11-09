@@ -37,10 +37,11 @@ def _clear_session_cookie(response: Response) -> None:
     response.delete_cookie(settings.cookie_name, path="/", secure=settings.is_production, httponly=True, samesite="strict")
 
 
-def _me(db: DbSession, user: User) -> Me:
+def me_out(db: DbSession, user: User) -> Me:
     return Me(
         id=user.id, username=user.username, email=user.email, email_verified=user.email_verified,
         has_password=user.password_hash is not None, google_linked=user.google_sub is not None,
+        avatar_version=user.avatar_version,
         key_id=key_service.current_key_id(db, user.id),
     )
 
@@ -48,7 +49,7 @@ def _me(db: DbSession, user: User) -> Me:
 def _signed_in(db: DbSession, response: Response, result: tuple[User, str]) -> Me:
     user, token = result
     _set_session_cookie(response, token)
-    return _me(db, user)
+    return me_out(db, user)
 
 
 def _limit_code_requests(request: Request, email: str) -> None:
@@ -64,7 +65,8 @@ def _limit_code_checks(request: Request, email: str) -> None:
 # ---------------------------------------------------------------- public
 @router.get("/config", response_model=AuthConfig)
 def config() -> AuthConfig:
-    return AuthConfig(google=bool(settings.google_client_id), email_codes=True)
+    return AuthConfig(google=bool(settings.google_client_id), email_codes=True,
+                      push_public_key=settings.vapid_public_key if settings.push_enabled else None)
 
 
 @router.post("/register", response_model=PendingVerification, status_code=status.HTTP_202_ACCEPTED)
@@ -163,7 +165,7 @@ def logout(response: Response, user: AuthUser, db: DbSession) -> None:
 
 @router.get("/me", response_model=Me)
 def me(user: AuthUser, db: DbSession) -> Me:
-    return _me(db, db.get_one(User, user.id))
+    return me_out(db, db.get_one(User, user.id))
 
 
 @router.get("/sessions", response_model=list[SessionInfo])

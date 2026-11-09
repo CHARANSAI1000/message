@@ -30,6 +30,14 @@ All cryptography uses the browser's built-in WebCrypto API; no custom primitives
 - **No account recovery.** There is no email or reset flow, so a forgotten password means a new account.
 - **Rate limits are in memory.** That is correct for a single instance, which the free plan provides; multiple replicas would need a shared store.
 
+## Media, calls and notifications
+
+- **Attachments:** each photo, file or voice note is encrypted on the device with a fresh random AES-256-GCM key. Only ciphertext is uploaded. The key travels inside the end-to-end-encrypted message. The server only lets the uploader and the people in that conversation download it, and deletes it with the message or after retention. Photos are re-encoded on the device, which strips EXIF location data. Received files are never rendered as HTML or SVG.
+- **Calls:** WebRTC media is encrypted end to end between the two devices with DTLS-SRTP. Every signalling message (offer, answer, ICE candidates, hang-up) is sealed with the conversation's E2EE key before the server relays it, so the server can't swap in its own media fingerprints (man-in-the-middle). A TURN relay only forwards encrypted packets. Call history is stored only on the device.
+- **Real-time channel:** the WebSocket requires the session cookie and an allowed `Origin` (blocking cross-site WebSocket hijacking). It carries only "sync" nudges and sealed call signals, never message content.
+- **Push:** Web Push payloads (encrypted for the browser per RFC 8291) carry only the sender's username and the event type, never message text.
+- **Edit and delete:** edits are re-encrypted by the sender with the original keys. "Delete for everyone" wipes the ciphertext and the attachment on the server. Copies already on the other person's device are removed when it syncs, but screenshots or exports made earlier can't be recalled.
+
 ## Sign-in methods
 
 - **Email verification:** new email accounts can't sign in until a 6-digit code is confirmed. Codes come from `secrets`, are stored only as salted SHA-256 hashes, expire after 10 minutes, are single-use, and die after 5 wrong guesses. Requests and checks are rate-limited per IP and per address.

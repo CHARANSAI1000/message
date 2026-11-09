@@ -1,4 +1,4 @@
-import { Lock, MessageCirclePlus, MessagesSquare, Search, SquarePen } from 'lucide-react';
+import { Ban, FileText, Image as ImageIcon, Lock, MessageCirclePlus, MessagesSquare, Mic, Search, SquarePen } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { EmptyState } from '../components/EmptyState';
@@ -47,16 +47,13 @@ export function ChatsPage({ threads, users, activePeer, onOpen, onNewChat }: Pro
               return (
                 <li key={m.peerId}>
                   <button className={`list-item ${activePeer === m.peerId ? 'active' : ''}`} onClick={() => onOpen(m.peerId)} disabled={!u}>
-                    <Avatar name={u?.username ?? '?'} />
+                    <Avatar name={u?.username ?? '?'} userId={u?.id} version={u?.avatar_version} />
                     <span className="li-body">
                       <span className="li-top">
                         <span className="li-title">{u?.username ?? 'Loading…'}</span>
                         <span className="li-time">{formatTime(m.sentAt)}</span>
                       </span>
-                      <span className="li-sub">
-                        {m.text === null && <Lock size={13} />}
-                        <span>{m.outgoing ? 'You: ' : ''}{m.text ?? 'Encrypted message'}</span>
-                      </span>
+                      <span className="li-sub"><Preview m={m} /></span>
                     </span>
                   </button>
                 </li>
@@ -67,4 +64,15 @@ export function ChatsPage({ threads, users, activePeer, onOpen, onNewChat }: Pro
       </div>
     </>
   );
+}
+
+function Preview({ m }: { m: ChatMessage }) {
+  const you = m.outgoing ? 'You: ' : '';
+  if (m.deleted) return <><Ban size={13} /><span>{m.outgoing ? 'You deleted this message' : 'This message was deleted'}</span></>;
+  if (m.text === null) return <><Lock size={13} /><span>Encrypted message</span></>;
+  const att = m.attachment;
+  if (att?.kind === 'image') return <><ImageIcon size={13} /><span>{you}{m.text || 'Photo'}</span></>;
+  if (att?.kind === 'audio') return <><Mic size={13} /><span>{you}Voice message</span></>;
+  if (att?.kind === 'file') return <><FileText size={13} /><span>{you}{m.text || att.name}</span></>;
+  return <span>{you}{m.text}</span>;
 }

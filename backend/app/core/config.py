@@ -52,12 +52,34 @@ class Settings(BaseSettings):
     otp_max_attempts: int = 5
     unverified_account_hours: int = 24
 
+    # Media: encrypted attachments are stored in PostgreSQL (fine for small/free deployments).
+    max_attachment_bytes: int = 10 * 1024 * 1024
+    max_avatar_bytes: int = 300 * 1024
+    message_edit_minutes: int = 15
+
+    # Calls: STUN is always included. Add a TURN relay for restrictive networks, either static
+    # credentials (TURN_URLS comma-separated, TURN_USERNAME, TURN_CREDENTIAL) or Cloudflare Realtime TURN.
+    turn_urls: str = ""
+    turn_username: str = ""
+    turn_credential: str = ""
+    cloudflare_turn_key_id: str = ""
+    cloudflare_turn_api_token: str = ""
+
+    # Web Push (ring/notify when the app is closed). Generate with `make vapid`.
+    vapid_public_key: str = ""
+    vapid_private_key: str = ""
+    vapid_subject: str = "mailto:admin@example.com"
+
     # Built React app. Served from the same origin, so no CORS is needed.
     static_dir: Path = Path(__file__).resolve().parents[2] / "static"  # backend/static (dev) or /app/static (Docker)
 
     @property
     def is_production(self) -> bool:
         return self.environment.lower() == "production"
+
+    @property
+    def push_enabled(self) -> bool:
+        return bool(self.vapid_public_key and self.vapid_private_key)
 
     @property
     def email_delivery_enabled(self) -> bool:

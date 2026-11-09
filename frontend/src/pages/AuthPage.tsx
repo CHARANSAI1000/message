@@ -28,7 +28,7 @@ export function AuthPage({ onDone, googleReturn }: { onDone: (me: Me) => void; g
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => { authApi.config().then(setConfig).catch(() => setConfig({ google: false, email_codes: true })); }, []);
+  useEffect(() => { authApi.config().then(setConfig).catch(() => setConfig({ google: false, email_codes: true, push_public_key: null })); }, []);
 
   const go = (next: View) => { setView(next); setError(''); setNotice(''); };
 

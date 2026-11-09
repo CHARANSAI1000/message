@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.core.database import engine, run_migrations
 from app.core.exceptions import register_exception_handlers
 from app.core.middleware import SecurityMiddleware
+from app.core.realtime import hub
 from app.routers import all_routers
 from app.services.maintenance_service import cleanup_expired
 
@@ -33,6 +34,7 @@ async def _cleanup_loop() -> None:
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     await asyncio.to_thread(run_migrations)
+    hub.bind_loop(asyncio.get_running_loop())
     task = asyncio.create_task(_cleanup_loop())
     try:
         yield

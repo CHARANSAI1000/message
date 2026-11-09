@@ -73,6 +73,11 @@ Google Cloud Console → **APIs & Services → Credentials** → your OAuth 2.0 
 
 Changes can take a few minutes to apply. Use `localhost`, not `127.0.0.1`, when testing locally, because Google matches redirect URIs exactly.
 
+## Step 5b — Calls and notifications (optional but recommended)
+
+- **Push notifications:** run `make vapid` on your computer and copy the two lines into Render as `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY`. Set `VAPID_SUBJECT` to `mailto:<your email>`.
+- **TURN relay:** without one, calls fail for roughly 1 in 5 network combinations (mobile data, strict office Wi-Fi). Either create a Cloudflare Realtime TURN key and set `CLOUDFLARE_TURN_KEY_ID` and `CLOUDFLARE_TURN_API_TOKEN`, or use any TURN provider with `TURN_URLS`, `TURN_USERNAME` and `TURN_CREDENTIAL`.
+
 ## Step 6 — Test it
 
 1. Create an account with email: the verification code should arrive (check spam the first time).
@@ -114,6 +119,10 @@ git add . && git commit -m "describe change" && git push
 | `MAX_MESSAGE_RETENTION_DAYS` | `30` | Hard cap on how long ciphertext is kept |
 | `SESSION_IDLE_DAYS` / `SESSION_ABSOLUTE_DAYS` | `7` / `30` | Session lifetimes |
 | `DB_POOL_MAX` | `5` | Max database connections |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | empty | Web Push keys (`make vapid`) for ringing and notifications while closed |
+| `CLOUDFLARE_TURN_KEY_ID` / `CLOUDFLARE_TURN_API_TOKEN` | empty | Cloudflare TURN relay for calls |
+| `TURN_URLS` / `TURN_USERNAME` / `TURN_CREDENTIAL` | empty | Any other TURN relay |
+| `MAX_ATTACHMENT_BYTES` | 10 MB | Largest photo/file/voice note |
 
 ## Other hosts
 

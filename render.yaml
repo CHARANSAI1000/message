@@ -25,3 +25,13 @@ services:
         sync: false # from brevo.com → SMTP & API → API keys; set in the dashboard, never commit it
       - key: SMTP_FROM_EMAIL
         sync: false # a sender address verified in Brevo (e.g. your Gmail address)
+      - key: VAPID_PUBLIC_KEY
+        sync: false # run `make vapid` locally and paste both lines
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false # mailto:you@example.com
+      - key: CLOUDFLARE_TURN_KEY_ID
+        sync: false # optional: TURN relay so calls work on strict networks
+      - key: CLOUDFLARE_TURN_API_TOKEN
+        sync: false

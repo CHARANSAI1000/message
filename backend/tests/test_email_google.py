@@ -14,7 +14,7 @@ from tests.conftest import OUTBOX, PASSWORD, last_code, make_client, register, s
 
 
 def test_config_and_strict_csp(client):
-    assert client.get("/api/v1/auth/config").json() == {"google": True, "email_codes": True}
+    assert client.get("/api/v1/auth/config").json() == {"google": True, "email_codes": True, "push_public_key": None}
     # Google sign-in uses a redirect, so no third-party script/frame is ever allowed.
     csp = client.get("/healthz").headers["content-security-policy"]
     assert "google" not in csp and "frame-src 'none'" in csp

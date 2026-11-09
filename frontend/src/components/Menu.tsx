@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 type Props = {
   trigger: (props: { open: boolean; toggle: () => void }) => ReactNode;
   children: (close: () => void) => ReactNode;
-  placement?: 'top-start' | 'bottom-end';
+  placement?: 'top-start' | 'bottom-end' | 'bottom-start';
 };
 
 /** Small popover menu that closes on outside click or Escape. */

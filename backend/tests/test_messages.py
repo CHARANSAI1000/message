@@ -24,8 +24,8 @@ def test_message_roundtrip_is_visible_only_to_participants():
     assert alice_c.get("/api/v1/messages/sync").json()["messages"][0]["id"] == body["id"]
     assert carol_c.get("/api/v1/messages/sync").json()["messages"] == []
 
-    seq = received[0]["seq"]
-    assert bob_c.get(f"/api/v1/messages/sync?after={seq}").json()["messages"] == []
+    rev = received[0]["rev"]
+    assert bob_c.get(f"/api/v1/messages/sync?after={rev}").json()["messages"] == []
 
 
 def test_sync_paginates():
@@ -35,7 +35,7 @@ def test_sync_paginates():
         assert alice_c.post("/api/v1/messages", json=envelope(alice, bob)).status_code == 201
     page = bob_c.get("/api/v1/messages/sync?limit=2").json()
     assert len(page["messages"]) == 2 and page["has_more"] is True
-    rest = bob_c.get(f"/api/v1/messages/sync?after={page['messages'][-1]['seq']}").json()
+    rest = bob_c.get(f"/api/v1/messages/sync?after={page['messages'][-1]['rev']}").json()
     assert len(rest["messages"]) == 1 and rest["has_more"] is False
 
 

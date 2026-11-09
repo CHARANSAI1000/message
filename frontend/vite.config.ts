@@ -10,7 +10,7 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     // Proxying keeps the browser on one origin, exactly like production.
-    proxy: { '/api': API_URL, '/healthz': API_URL },
+    proxy: { '/api': { target: API_URL, ws: true }, '/healthz': API_URL },
   },
   build: {
     outDir: 'dist',

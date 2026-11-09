@@ -33,10 +33,11 @@ def get_by_username(db: Session, username: str) -> Profile:
 
 
 def get_visible(db: Session, viewer_id: uuid.UUID, target_id: uuid.UUID) -> Profile:
-    """A profile is visible to yourself, your contacts' owner, and people you have a conversation with."""
+    """Visible to yourself, your contacts, people who added you, and people you have a conversation with."""
     related = or_(
         User.id == viewer_id,
         exists().where(Contact.owner_id == viewer_id, Contact.contact_id == target_id),
+        exists().where(Contact.owner_id == target_id, Contact.contact_id == viewer_id),  # they added you
         exists().where(or_(
             and_(Message.sender_id == viewer_id, Message.recipient_id == target_id),
             and_(Message.sender_id == target_id, Message.recipient_id == viewer_id),

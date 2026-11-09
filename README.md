@@ -13,7 +13,11 @@ Read [docs/security-architecture.md](docs/security-architecture.md) for what is 
 
 - Username + password accounts (Argon2id). Opaque session tokens live in HttpOnly, SameSite=Strict cookies, and the server stores only their SHA-256 hashes.
 - Session list with remote sign-out. Changing the password signs out other devices. You can delete your account.
-- End-to-end encrypted one-to-one messages. Private keys are non-extractable and never leave the browser.
+- End-to-end encrypted one-to-one messages, delivered instantly over WebSocket. Edit (15 min), delete for me / for everyone.
+- End-to-end encrypted photos, documents (10 MB) and voice messages.
+- End-to-end encrypted voice and video calls, screen sharing (desktop), a Calls tab with history, and ringing while the app is closed (Web Push).
+- Notification settings: sounds, silent mode, vibration, ringtones. Profile photo and username change.
+- Private keys are non-extractable and never leave the device.
 - Safety numbers, key pinning, and a warning when a contact's key changes.
 - Disappearing messages (5 min to 1 week). The server deletes everything after 30 days.
 - Contacts by exact username (there is no user directory), plus blocking.

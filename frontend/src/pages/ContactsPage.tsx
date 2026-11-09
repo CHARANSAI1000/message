@@ -58,7 +58,7 @@ export function ContactsPage({ contacts, blocked, activePeer, onOpen, onChanged 
               const isBlocked = blocked.has(c.id);
               return (
                 <li key={c.id} className={`list-item hoverable ${activePeer === c.id ? 'active' : ''}`}>
-                  <Avatar name={c.username} />
+                  <Avatar name={c.username} userId={c.id} version={c.avatar_version} />
                   <span className="li-body">
                     <span className="li-title">{c.username}</span>
                     <span className="li-sub">

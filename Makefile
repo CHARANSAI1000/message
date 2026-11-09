@@ -2,7 +2,7 @@
 SHELL := /bin/bash
 APP_PORT ?= 8080
 
-.PHONY: help env install db backend frontend test docker docker-logs stop clean mobile-sync android apk ios
+.PHONY: help env install db backend frontend test docker docker-logs stop clean mobile-sync android apk ios vapid
 
 help: ## Show commands
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-12s %s\n", $$1, $$2}'
@@ -64,3 +64,6 @@ apk: mobile-sync ## Build a debug APK (needs Android Studio / JDK) -> frontend/a
 
 ios: mobile-sync ## Open the iOS project in Xcode
 	cd frontend && npx cap open ios
+
+vapid: ## Print a new Web Push (VAPID) key pair for .env / Render
+	cd backend && .venv/bin/python scripts/gen_vapid.py

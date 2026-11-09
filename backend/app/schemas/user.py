@@ -13,10 +13,12 @@ class UserOut(BaseModel):
     id: UUID
     username: str
     key: PublicKeyOut | None
+    avatar_version: int | None = None  # changes when the profile photo changes (cache busting)
 
     @classmethod
     def from_model(cls, user: User, key: PublicKey | None) -> "UserOut":
-        return cls(id=user.id, username=user.username, key=PublicKeyOut.from_model(key) if key else None)
+        return cls(id=user.id, username=user.username, key=PublicKeyOut.from_model(key) if key else None,
+                   avatar_version=user.avatar_version)
 
 
 class UsernameIn(BaseModel):

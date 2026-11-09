@@ -1,35 +1,36 @@
-import {
-  ArrowLeft, Check, Lock, SendHorizontal, ShieldAlert, ShieldCheck, ShieldQuestion, Timer, TimerOff,
-} from 'lucide-react';
-import { Fragment, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
+import { ArrowLeft, Check, Lock, Phone, ShieldAlert, ShieldCheck, ShieldQuestion, Video } from 'lucide-react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usersApi } from '../api';
 import { Alert } from '../components/Alert';
 import { Avatar } from '../components/Avatar';
-import { Menu } from '../components/Menu';
+import { Composer } from '../components/Composer';
+import { MessageBubble } from '../components/MessageBubble';
 import { Modal } from '../components/Modal';
-import { DISAPPEARING_TIMERS as TIMERS, MAX_MESSAGE_CHARS } from '../constants';
 import { safetyNumber } from '../services/crypto';
+import { preparePhoto, uploadEncrypted } from '../services/media';
 import { KeyChangedError, type Vault } from '../services/vault';
 import type { ChatMessage, Pin, User } from '../types';
-import { dayLabel, errorText, formatClock } from '../utils/format';
+import { dayLabel, errorText } from '../utils/format';
+
+const EDIT_WINDOW_MS = 15 * 60 * 1000;
 
 type Props = {
   vault: Vault; peer: User; messages: ChatMessage[]; blocked: boolean;
   onBack: () => void; onSent: (m: ChatMessage) => void; onPeerRefreshed: (u: User) => void;
+  onHide: (id: string) => void; onCall: (video: boolean) => void; inCall: boolean;
 };
 
-const timerLabel = (s: number | null) => TIMERS.find((t) => t.value === s)?.label ?? 'Off';
-
-export function ConversationPage({ vault, peer, messages, blocked, onBack, onSent, onPeerRefreshed }: Props) {
-  const [draft, setDraft] = useState('');
-  const [ttl, setTtl] = useState<number | null>(null);
+export function ConversationPage({ vault, peer, messages, blocked, onBack, onSent, onPeerRefreshed, onHide, onCall, inCall }: Props) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState('');
   const [pin, setPin] = useState<Pin | undefined>();
   const [showSafety, setShowSafety] = useState(false);
   const [number, setNumber] = useState('');
+  const [editing, setEditing] = useState<ChatMessage | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<ChatMessage | null>(null);
+  const [lightbox, setLightbox] = useState<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
-  const input = useRef<HTMLTextAreaElement>(null);
 
   const reloadPin = () => vault.track(peer).then(() => vault.pin(peer.id)).then(setPin).catch((e) => setError(e.message));
   useEffect(() => { void reloadPin(); }, [peer.id, messages.length]);
@@ -37,37 +38,60 @@ export function ConversationPage({ vault, peer, messages, blocked, onBack, onSen
     const theirs = pin?.keys[String(pin.currentKeyId)];
     if (theirs && vault.ownSpki) void safetyNumber(vault.ownSpki, theirs).then(setNumber);
   }, [pin, vault]);
-  useLayoutEffect(() => { scroller.current?.scrollTo({ top: scroller.current.scrollHeight }); }, [messages.length]);
-  useEffect(() => { input.current?.focus(); }, []);
+  useLayoutEffect(() => { scroller.current?.scrollTo({ top: scroller.current.scrollHeight }); }, [messages.length, uploading]);
 
-  // Auto-grow the composer up to its CSS max-height.
-  const autosize = () => {
-    const el = input.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${el.scrollHeight}px`;
-  };
-
-  const send = async (e?: FormEvent) => {
-    e?.preventDefault();
-    const text = draft.trim();
-    if (!text || busy) return;
+  /** Shared send path: always encrypt to the contact's latest key. */
+  const run = async (fn: (fresh: User) => Promise<void>) => {
     setBusy(true);
     setError('');
     try {
-      const fresh = await usersApi.get(peer.id); // always encrypt to the contact's latest key
+      const fresh = await usersApi.get(peer.id);
       onPeerRefreshed(fresh);
-      onSent(await vault.send(fresh, text, ttl));
-      setDraft('');
-      requestAnimationFrame(autosize);
+      await fn(fresh);
     } catch (err) {
       setError(errorText(err, 'Could not send'));
       if (err instanceof KeyChangedError) setShowSafety(true);
     } finally {
       setBusy(false);
+      setUploading('');
       void reloadPin();
-      input.current?.focus();
     }
+  };
+
+  const sendText = (text: string, ttl: number | null) => run(async (fresh) => onSent(await vault.send(fresh, text, ttl)));
+
+  const sendFile = (file: File, kind: 'image' | 'file', caption: string, ttl: number | null) => run(async (fresh) => {
+    setUploading(kind === 'image' ? 'Encrypting photo…' : `Encrypting ${file.name}…`);
+    if (kind === 'image') {
+      const { blob, w, h, thumb } = await preparePhoto(file);
+      const att = await uploadEncrypted(blob, { kind: 'image', name: 'photo.jpg', mime: 'image/jpeg', w, h, thumb });
+      onSent(await vault.send(fresh, caption, ttl, att));
+    } else {
+      const att = await uploadEncrypted(file, { kind: 'file', name: file.name.slice(0, 200), mime: file.type || 'application/octet-stream' });
+      onSent(await vault.send(fresh, caption, ttl, att));
+    }
+  });
+
+  const sendVoice = (blob: Blob, seconds: number, ttl: number | null) => run(async (fresh) => {
+    setUploading('Sending voice message…');
+    const att = await uploadEncrypted(blob, { kind: 'audio', name: 'voice-message', mime: blob.type || 'audio/webm', dur: seconds });
+    onSent(await vault.send(fresh, '', ttl, att));
+  });
+
+  const saveEdit = async (text: string) => {
+    const target = editing;
+    if (!target) return;
+    setBusy(true);
+    try {
+      onSent(await vault.edit(target, text));
+      setEditing(null);
+    } catch (e) { setError(errorText(e, 'Could not edit')); }
+    setBusy(false);
+  };
+
+  const deleteEveryone = async (m: ChatMessage) => {
+    setConfirmDelete(null);
+    try { onSent(await vault.deleteForEveryone(m)); } catch (e) { setError(errorText(e, 'Could not delete')); }
   };
 
   const setTrust = async (verified: boolean) => {
@@ -86,14 +110,15 @@ export function ConversationPage({ vault, peer, messages, blocked, onBack, onSen
     <>
       <header className="chat-header">
         <button className="icon-btn back" onClick={onBack} aria-label="Back to chats"><ArrowLeft size={20} /></button>
-        <Avatar name={peer.username} />
+        <Avatar name={peer.username} userId={peer.id} version={peer.avatar_version} />
         <div className="grow">
           <div className="chat-title truncate">{peer.username}</div>
           <div className={`chat-status ${status.cls}`}><status.Icon size={13} /> {status.text}</div>
         </div>
-        <button className={`btn btn-sm ${pin?.verified ? 'btn-ghost' : ''}`} onClick={() => setShowSafety(true)}>
-          {pin?.verified ? <ShieldCheck size={16} /> : <ShieldQuestion size={16} />}
-          <span>{pin?.verified ? 'Verified' : 'Verify'}</span>
+        <button className="icon-btn" onClick={() => onCall(false)} disabled={blocked || inCall || !peer.key} aria-label="Voice call" title="Voice call"><Phone size={19} /></button>
+        <button className="icon-btn" onClick={() => onCall(true)} disabled={blocked || inCall || !peer.key} aria-label="Video call" title="Video call"><Video size={20} /></button>
+        <button className={`icon-btn ${pin?.verified ? 'verified-btn' : ''}`} onClick={() => setShowSafety(true)} aria-label="Verify safety number" title="Verify safety number">
+          {pin?.verified ? <ShieldCheck size={19} /> : <ShieldQuestion size={19} />}
         </button>
       </header>
 
@@ -113,26 +138,21 @@ export function ConversationPage({ vault, peer, messages, blocked, onBack, onSen
 
       <div className="chat-scroll" ref={scroller}>
         <div className="chat-inner">
-          <div className="e2ee-note"><Lock size={15} /> Messages are end-to-end encrypted. Only you and {peer.username} can read them — not even the ForYou server.</div>
+          <div className="e2ee-note"><Lock size={15} /> Messages, photos, voice notes and calls are end-to-end encrypted. Only you and {peer.username} can see them — not even the ForYou server.</div>
           {messages.map((m, i) => {
             const prev = messages[i - 1];
             const newDay = !prev || new Date(prev.sentAt).toDateString() !== new Date(m.sentAt).toDateString();
-            const gap = prev && prev.outgoing !== m.outgoing;
+            const canEdit = m.outgoing && !m.deleted && m.text !== null && Date.now() - m.sentAt < EDIT_WINDOW_MS && m.attachment?.kind !== 'audio';
             return (
               <Fragment key={m.id}>
                 {newDay && <div className="day-sep">{dayLabel(m.sentAt)}</div>}
-                <div className={`msg ${m.outgoing ? 'out' : 'in'} ${gap ? 'gap' : ''}`}>
-                  <div className={`bubble ${m.text === null ? 'locked' : ''}`}>
-                    {m.text ?? <span className="row"><Lock size={13} /> {m.error ?? 'Cannot decrypt'}</span>}
-                    <div className="bubble-meta">
-                      {m.ttlSeconds && <><Timer size={11} /> {timerLabel(m.ttlSeconds)}<span className="sep">·</span></>}
-                      {formatClock(m.sentAt)}
-                    </div>
-                  </div>
-                </div>
+                <MessageBubble m={m} gap={Boolean(prev && prev.outgoing !== m.outgoing)} canEdit={canEdit}
+                  onEdit={() => setEditing(m)} onDeleteForMe={() => onHide(m.id)} onDeleteForEveryone={() => setConfirmDelete(m)}
+                  onOpenImage={setLightbox} />
               </Fragment>
             );
           })}
+          {uploading && <div className="msg out"><div className="bubble uploading">{uploading}</div></div>}
         </div>
       </div>
 
@@ -140,34 +160,25 @@ export function ConversationPage({ vault, peer, messages, blocked, onBack, onSen
         <p className="blocked-note">You blocked {peer.username}. Unblock them in Contacts to send messages.</p>
       ) : (
         <div className="composer-wrap">
-          <form className="composer" onSubmit={send}>
-            <Menu placement="top-start" trigger={({ toggle, open }) => ttl ? (
-              <button type="button" className="timer-chip" onClick={toggle} aria-expanded={open} title="Disappearing messages">
-                <Timer size={15} /> {timerLabel(ttl)}
-              </button>
-            ) : (
-              <button type="button" className={`icon-btn ${open ? 'active' : ''}`} onClick={toggle} aria-expanded={open} title="Disappearing messages" aria-label="Disappearing messages">
-                <Timer size={19} />
-              </button>
-            )}>
-              {(close) => <>
-                <div className="menu-label">Disappearing messages</div>
-                {TIMERS.map((t) => (
-                  <button key={t.label} type="button" className="menu-item" role="menuitemradio" aria-checked={ttl === t.value}
-                    onClick={() => { setTtl(t.value); close(); input.current?.focus(); }}>
-                    {t.value ? <Timer size={16} /> : <TimerOff size={16} />} {t.label}
-                    {ttl === t.value && <Check size={16} className="check" />}
-                  </button>
-                ))}
-              </>}
-            </Menu>
-            <textarea ref={input} rows={1} maxLength={MAX_MESSAGE_CHARS} placeholder={`Message ${peer.username}`} value={draft}
-              aria-label="Message"
-              onChange={(e) => { setDraft(e.target.value); autosize(); }}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(); } }} />
-            <button className="send-btn" disabled={busy || !draft.trim()} aria-label="Send"><SendHorizontal size={18} /></button>
-          </form>
+          <Composer peerName={peer.username} busy={busy} editingText={editing?.text ?? null} onCancelEdit={() => setEditing(null)}
+            onSendText={sendText} onSaveEdit={saveEdit} onSendFile={sendFile} onSendVoice={sendVoice} />
           {error && <div className="composer-note"><Alert kind="error">{error}</Alert></div>}
+        </div>
+      )}
+
+      {confirmDelete && (
+        <Modal title="Delete for everyone?" onClose={() => setConfirmDelete(null)} footer={<>
+          <button className="btn" onClick={() => setConfirmDelete(null)}>Cancel</button>
+          <button className="btn btn-danger" onClick={() => deleteEveryone(confirmDelete)}>Delete for everyone</button>
+        </>}>
+          <p className="small text-2">The message and any photo or file in it will be removed from {peer.username}'s devices and from the server.</p>
+        </Modal>
+      )}
+
+      {lightbox && (
+        <div className="lightbox" role="dialog" aria-label="Photo" onClick={() => setLightbox(null)}>
+          <img src={lightbox} alt="" />
+          <a className="btn btn-sm lightbox-save" href={lightbox} download="photo.jpg" onClick={(e) => e.stopPropagation()}>Save</a>
         </div>
       )}
 
@@ -183,7 +194,9 @@ export function ConversationPage({ vault, peer, messages, blocked, onBack, onSen
             )}
           </>}>
           <div className="safety-people">
-            <Avatar name={vault.me.username} size="sm" /><span className="link" /><Avatar name={peer.username} size="sm" />
+            <Avatar name={vault.me.username} size="sm" userId={vault.me.id} version={vault.me.avatar_version} />
+            <span className="link" />
+            <Avatar name={peer.username} size="sm" userId={peer.id} version={peer.avatar_version} />
           </div>
           <p className="text-2 small">
             Compare these numbers with {peer.username} in person or on a call. If they're identical on both screens,

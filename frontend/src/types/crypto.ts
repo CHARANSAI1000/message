@@ -17,4 +17,19 @@ export type EnvelopeMeta = {
   ttlSeconds: number | null;
 };
 
-export type Plaintext = { text: string; sentAt: number };
+/** Encrypted file reference carried inside a message; `key`/`iv` decrypt the uploaded bytes. */
+export type AttachmentMeta = {
+  id: string;
+  key: string;
+  iv: string;
+  kind: 'image' | 'audio' | 'file';
+  name: string;
+  mime: string;
+  size: number;
+  w?: number;
+  h?: number;
+  dur?: number;    // seconds, voice notes
+  thumb?: string;  // tiny JPEG data: URL preview for images
+};
+
+export type Plaintext = { text: string; sentAt: number; att?: AttachmentMeta };

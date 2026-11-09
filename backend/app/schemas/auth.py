@@ -99,12 +99,14 @@ class Me(BaseModel):
     email_verified: bool
     has_password: bool
     google_linked: bool
+    avatar_version: int | None = None
     key_id: int | None
 
 
 class AuthConfig(BaseModel):
     google: bool
     email_codes: bool
+    push_public_key: str | None = None
 
 
 class SessionInfo(BaseModel):
@@ -113,3 +115,13 @@ class SessionInfo(BaseModel):
     created_at: datetime
     last_seen_at: datetime
     current: bool
+
+
+class UsernameChange(BaseModel):
+    username: Username
+
+
+class PushSubscriptionIn(BaseModel):
+    endpoint: str = Field(min_length=10, max_length=2048, pattern=r"^https://")
+    p256dh: str = Field(min_length=10, max_length=200)
+    auth: str = Field(min_length=10, max_length=100)

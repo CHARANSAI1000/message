@@ -76,7 +76,42 @@ export async function decryptMessage(key: CryptoKey, meta: EnvelopeMeta, ivB64: 
   );
   const parsed = JSON.parse(dec.decode(pt)) as Partial<Plaintext>;
   if (typeof parsed.text !== 'string' || typeof parsed.sentAt !== 'number') throw new Error('Malformed message');
-  return { text: parsed.text, sentAt: parsed.sentAt };
+  const att = parsed.att;
+  if (att !== undefined && !(typeof att === 'object' && typeof att.id === 'string' && typeof att.key === 'string'
+    && typeof att.iv === 'string' && ['image', 'audio', 'file'].includes(att.kind))) throw new Error('Malformed attachment');
+  return { text: parsed.text, sentAt: parsed.sentAt, ...(att ? { att } : {}) };
+}
+
+/* ------------------------------------------------------------------ attachments */
+
+/** Encrypt file bytes with a fresh random AES-256-GCM key. The key travels inside the E2EE message. */
+export async function encryptFile(data: ArrayBuffer) {
+  const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, data));
+  return { ciphertext, key: toB64(await crypto.subtle.exportKey('raw', key)), iv: toB64(iv) };
+}
+
+export async function decryptFile(ciphertext: ArrayBuffer, keyB64: string, ivB64: string): Promise<ArrayBuffer> {
+  const key = await crypto.subtle.importKey('raw', fromB64(keyB64), 'AES-GCM', false, ['decrypt']);
+  return crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(ivB64) }, key, ciphertext);
+}
+
+/* ------------------------------------------------------------------ sealed JSON (call signalling) */
+
+export async function sealJson(key: CryptoKey, aadParts: unknown[], value: unknown) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv, additionalData: enc.encode(JSON.stringify(aadParts)) }, key, enc.encode(JSON.stringify(value)),
+  );
+  return { iv: toB64(iv), ct: toB64(ct) };
+}
+
+export async function openJson<T>(key: CryptoKey, aadParts: unknown[], ivB64: string, ctB64: string): Promise<T> {
+  const pt = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: fromB64(ivB64), additionalData: enc.encode(JSON.stringify(aadParts)) }, key, fromB64(ctB64),
+  );
+  return JSON.parse(dec.decode(pt)) as T;
 }
 
 async function digestGroups(data: Uint8Array<ArrayBuffer>): Promise<string> {

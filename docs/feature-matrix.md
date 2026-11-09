@@ -10,7 +10,13 @@
 | Sessions | Opaque HttpOnly cookie sessions, idle + absolute expiry, list/revoke, logout | Implemented |
 | Account | Change password (signs out other devices), delete account (cascades all data) | Implemented |
 | Abuse | Rate limits on register, login (per IP and per username), lookup, send, sync | Implemented (in-memory, single instance) |
-| Messaging | One-to-one E2EE text, sync with pagination, 4,000-character limit | Implemented |
+| Messaging | One-to-one E2EE text, instant delivery over WebSocket (polling fallback), 4,000-character limit | Implemented |
+| Edit / delete | Edit own messages for 15 minutes; delete for me (this device) or for everyone (sender) | Implemented |
+| Media | E2EE photos (resized, location data stripped), documents up to 10 MB, voice messages | Implemented |
+| Calls | One-to-one E2EE voice and video calls (WebRTC, encrypted signalling), mute, camera on/off, switch camera, call history | Implemented (TURN relay optional) |
+| Screen sharing | Share your screen during a call | Desktop browsers; not available in mobile browsers |
+| Notifications | Ring and notify while closed (Web Push), sounds, silent mode, vibration, 3 ringtones | Implemented (Android Chrome, desktop; iPhone needs Home Screen install) |
+| Profile | Change username, profile photo | Implemented |
 | Disappearing | Per-message timers (5 min – 1 week); server-side 30-day retention cap | Implemented |
 | Verification | Safety numbers, key pinning (TOFU), key-change warning that blocks sending | Implemented |
 | Contacts | Add by exact username (no directory), remove, block/unblock | Implemented |
@@ -20,10 +26,8 @@
 | Forward secrecy | Static keys, so no forward secrecy or post-compromise security | Not implemented: needs MLS/Signal (see security doc) |
 | Recovery | Password reset by email code (implemented). Encryption-key backup | Key backup not implemented: a new device creates a new key |
 | Groups | Group chats | Not implemented |
-| Media | Encrypted photos, voice, files | Not implemented |
-| Calls | Voice/video | Not implemented |
+| Group calls | Calls with more than two people | Not implemented (needs a media server such as LiveKit) |
 | Privacy extras | Read receipts, typing, online status | Not implemented (none are collected) |
-| Push | Notifications | Not implemented (polling every 3 s while open) |
 | App lock | Local passcode / biometric | Not implemented |
 
 Stories, status updates, and broadcast lists remain out of scope.

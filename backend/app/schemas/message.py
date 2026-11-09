@@ -16,6 +16,7 @@ class MessageIn(BaseModel):
     iv: B64Bytes
     ciphertext: B64Bytes
     ttl_seconds: int | None = None
+    attachment_id: UUID | None = None
 
     @field_validator("iv")
     @classmethod
@@ -32,10 +33,23 @@ class MessageIn(BaseModel):
         return value
 
 
+class MessageEdit(BaseModel):
+    iv: B64Bytes
+    ciphertext: B64Bytes
+
+    @field_validator("iv")
+    @classmethod
+    def iv_size(cls, value: bytes) -> bytes:
+        if len(value) != 12:
+            raise ValueError("IV must be 12 bytes")
+        return value
+
+
 class MessageOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     seq: int
+    rev: int
     id: UUID
     sender_id: UUID
     recipient_id: UUID
@@ -44,7 +58,10 @@ class MessageOut(BaseModel):
     iv: B64Bytes
     ciphertext: B64Bytes
     ttl_seconds: int | None
+    attachment_id: UUID | None
     created_at: datetime
+    edited_at: datetime | None
+    deleted: bool
     expires_at: datetime
 
 
