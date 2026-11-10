@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import delete, or_, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -90,8 +90,33 @@ def delete_for_everyone(db: Session, sender_id: uuid.UUID, message_id: uuid.UUID
     return message
 
 
+def mark_delivered(db: Session, recipient_id: uuid.UUID) -> set[uuid.UUID]:
+    """The recipient's device has fetched its messages: set ✓✓ (delivered). Returns senders to notify."""
+    rows = db.execute(
+        update(Message)
+        .where(Message.recipient_id == recipient_id, Message.delivered_at.is_(None), Message.deleted_at.is_(None))
+        .values(delivered_at=datetime.now(timezone.utc), rev=message_rev_seq.next_value())
+        .returning(Message.sender_id)
+    ).all()
+    db.commit()
+    return {r[0] for r in rows}
+
+
+def mark_read(db: Session, reader_id: uuid.UUID, peer_id: uuid.UUID, up_to_seq: int) -> bool:
+    """Blue ticks for everything `peer` sent the reader up to `up_to_seq`. Returns True if anything changed."""
+    now = datetime.now(timezone.utc)
+    result = db.execute(
+        update(Message)
+        .where(Message.recipient_id == reader_id, Message.sender_id == peer_id, Message.seq <= up_to_seq,
+               Message.read_at.is_(None), Message.deleted_at.is_(None))
+        .values(read_at=now, delivered_at=func.coalesce(Message.delivered_at, now), rev=message_rev_seq.next_value())
+    )
+    db.commit()
+    return bool(result.rowcount)
+
+
 def sync(db: Session, user_id: uuid.UUID, after: int, limit: int) -> tuple[list[Message], bool]:
-    """New, edited and deleted envelopes for the user with rev > after (the client's cursor)."""
+    """New, edited, deleted and receipt-updated envelopes for the user with rev > after (the client's cursor)."""
     rows = list(db.scalars(
         select(Message)
         .where(

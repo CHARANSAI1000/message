@@ -42,3 +42,12 @@ export function passwordScore(pw: string): number {
   if (classes >= 3) score++;
   return Math.min(score, 4);
 }
+
+export function lastSeenLabel(iso: string): string {
+  const d = new Date(iso);
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const label = dayLabel(d.getTime());
+  if (label === 'Today') return `last seen today at ${time}`;
+  if (label === 'Yesterday') return `last seen yesterday at ${time}`;
+  return `last seen ${d.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${time}`;
+}

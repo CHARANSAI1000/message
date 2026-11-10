@@ -61,6 +61,8 @@ class MessageOut(BaseModel):
     attachment_id: UUID | None
     created_at: datetime
     edited_at: datetime | None
+    delivered_at: datetime | None
+    read_at: datetime | None
     deleted: bool
     expires_at: datetime
 
@@ -68,3 +70,8 @@ class MessageOut(BaseModel):
 class SyncOut(BaseModel):
     messages: list[MessageOut]
     has_more: bool
+
+
+class ReadReceiptIn(BaseModel):
+    peer_id: UUID
+    up_to_seq: int

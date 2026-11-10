@@ -8,6 +8,9 @@ export type Me = {
   has_password: boolean;
   google_linked: boolean;
   avatar_version: number | null;
+  show_presence: boolean;
+  read_receipts: boolean;
+  discoverable: boolean;
   key_id: number | null;
 };
 export type AuthConfig = { google: boolean; email_codes: boolean; push_public_key: string | null };
@@ -21,7 +24,8 @@ export type Envelope = {
   seq: number; rev: number; id: string; sender_id: string; recipient_id: string;
   sender_key_id: number; recipient_key_id: number; iv: string; ciphertext: string;
   ttl_seconds: number | null; attachment_id: string | null;
-  created_at: string; edited_at: string | null; deleted: boolean; expires_at: string;
+  created_at: string; edited_at: string | null; delivered_at: string | null; read_at: string | null;
+  deleted: boolean; expires_at: string;
 };
 
 export type NewEnvelope = {
@@ -30,3 +34,5 @@ export type NewEnvelope = {
 };
 export type IceServer = { urls: string | string[]; username?: string; credential?: string };
 export type SyncPage = { messages: Envelope[]; has_more: boolean };
+
+export type Presence = { type: 'presence'; user: string; hidden?: boolean; online?: boolean; last_seen?: string | null };

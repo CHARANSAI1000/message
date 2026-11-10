@@ -70,5 +70,9 @@ def _deliver(user_id: uuid.UUID, payload: dict, ttl: int, urgency: str) -> None:
 
 
 def notify(user_id: uuid.UUID, payload: dict, *, ttl: int = 3600, urgency: str = "normal") -> None:
+    """Browser push (Web Push) and installed-app push (FCM), whichever are configured."""
     if settings.push_enabled:
         _pool.submit(_deliver, user_id, payload, ttl, urgency)
+    from app.services import fcm_service
+    if fcm_service.enabled():
+        _pool.submit(fcm_service.send, user_id, payload)

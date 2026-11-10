@@ -42,6 +42,7 @@ def me_out(db: DbSession, user: User) -> Me:
         id=user.id, username=user.username, email=user.email, email_verified=user.email_verified,
         has_password=user.password_hash is not None, google_linked=user.google_sub is not None,
         avatar_version=user.avatar_version,
+        show_presence=user.show_presence, read_receipts=user.read_receipts, discoverable=user.discoverable,
         key_id=key_service.current_key_id(db, user.id),
     )
 

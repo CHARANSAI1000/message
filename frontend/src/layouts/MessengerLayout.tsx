@@ -12,6 +12,7 @@ import { ConversationPage } from '../pages/ConversationPage';
 import { EmptyConversation } from '../pages/EmptyConversation';
 import { SettingsPage } from '../pages/SettingsPage';
 import { CallEngine, type CallView } from '../services/calls';
+import { registerNativePush } from '../services/native';
 import { refreshPushSubscription, registerServiceWorker } from '../services/push';
 import { Realtime } from '../services/realtime';
 import { unlockAudio } from '../services/sounds';
@@ -40,7 +41,22 @@ export function MessengerLayout({ vault, onSignedOut }: { vault: Vault; onSigned
     setEngine(calls);
     return () => { calls.dispose(); realtime.close(); };
   }, [vault]);
+  // Who is typing to me right now (for the chat list).
+  const [typingPeers, setTypingPeers] = useState<Record<string, number>>({});
   useEffect(() => {
+    if (!rt) return;
+    return rt.on('typing', (e) => {
+      const from = String(e.from);
+      setTypingPeers((t) => {
+        const next = { ...t };
+        if (e.state) next[from] = Date.now() + 6000; else delete next[from];
+        return next;
+      });
+    });
+  }, [rt]);
+
+  useEffect(() => {
+    void registerNativePush().catch(() => undefined);
     void registerServiceWorker()?.then(() => refreshPushSubscription()).catch(() => undefined);
     const unlock = () => unlockAudio();
     window.addEventListener('pointerdown', unlock, { once: true });
@@ -88,11 +104,12 @@ export function MessengerLayout({ vault, onSignedOut }: { vault: Vault; onSigned
       <section className="list-pane" aria-label={tab}>
         {state.offline && <div className="offline"><WifiOff size={14} /> Reconnecting…</div>}
         {tab === 'contacts' ? (
-          <ContactsPage contacts={state.contacts} blocked={state.blocked} activePeer={openPeer} onOpen={openChat} onChanged={state.refreshContacts} />
+          <ContactsPage contacts={state.contacts} blocked={state.blocked} activePeer={openPeer} onOpen={openChat} onChanged={state.refreshContacts} myId={me.id} />
         ) : tab === 'calls' ? (
           <CallsPage userId={me.id} users={state.users} inCall={inCall} onCall={(id, video) => void startCall(id, video)} />
         ) : (
-          <ChatsPage threads={state.threads} users={state.users} activePeer={openPeer} onOpen={setOpenPeer} onNewChat={() => changeTab('contacts')} />
+          <ChatsPage threads={state.threads} users={state.users} activePeer={openPeer} onOpen={setOpenPeer} onNewChat={() => changeTab('contacts')}
+            typing={Object.keys(typingPeers).filter((id) => typingPeers[id] > Date.now())} />
         )}
       </section>
 
@@ -113,6 +130,7 @@ export function MessengerLayout({ vault, onSignedOut }: { vault: Vault; onSigned
                 onHide={state.hide}
                 onCall={(video) => void startCall(peer.id, video)}
                 inCall={inCall}
+                rt={rt}
               />
             : <EmptyConversation onNewChat={() => changeTab('contacts')} />}
       </section>

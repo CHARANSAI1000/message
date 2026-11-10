@@ -100,6 +100,9 @@ class Me(BaseModel):
     has_password: bool
     google_linked: bool
     avatar_version: int | None = None
+    show_presence: bool = True
+    read_receipts: bool = True
+    discoverable: bool = True
     key_id: int | None
 
 
@@ -125,3 +128,31 @@ class PushSubscriptionIn(BaseModel):
     endpoint: str = Field(min_length=10, max_length=2048, pattern=r"^https://")
     p256dh: str = Field(min_length=10, max_length=200)
     auth: str = Field(min_length=10, max_length=100)
+
+
+class PrivacyIn(BaseModel):
+    show_presence: bool | None = None
+    read_receipts: bool | None = None
+    discoverable: bool | None = None
+
+
+class DiscoverIn(BaseModel):
+    """SHA-256 (hex) of lowercased email addresses from the user's phone contacts."""
+
+    hashes: list[str] = Field(max_length=2000)
+
+    @field_validator("hashes")
+    @classmethod
+    def hex64(cls, value: list[str]) -> list[str]:
+        out = []
+        for h in value:
+            h = h.strip().lower()
+            if len(h) != 64 or any(c not in "0123456789abcdef" for c in h):
+                raise ValueError("Each hash must be 64 hex characters")
+            out.append(h)
+        return list(dict.fromkeys(out))
+
+
+class DeviceTokenIn(BaseModel):
+    token: str = Field(min_length=20, max_length=4096)
+    platform: str = Field(pattern=r"^(android|ios)$")

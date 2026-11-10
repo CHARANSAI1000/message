@@ -117,6 +117,7 @@ export class Vault {
       id: env.id, seq: env.seq, rev: env.rev, meta, peerId, outgoing, ttlSeconds: env.ttl_seconds,
       sentAt: Date.parse(env.created_at), expiresAt: Date.parse(env.expires_at),
       edited: env.edited_at !== null, deleted: env.deleted,
+      status: (env.read_at ? 'read' : env.delivered_at ? 'delivered' : 'sent') as ChatMessage['status'],
     };
     if (env.deleted) return { ...base, text: null };
     try {

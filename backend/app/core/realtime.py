@@ -19,19 +19,40 @@ class Hub:
     def __init__(self) -> None:
         self._conns: dict[uuid.UUID, set[WebSocket]] = defaultdict(set)
         self._loop: asyncio.AbstractEventLoop | None = None
+        # target user -> {websocket: watcher user id} for "online / last seen" in open chats
+        self._watchers: dict[uuid.UUID, dict[WebSocket, uuid.UUID]] = defaultdict(dict)
 
     def bind_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
 
-    def add(self, user_id: uuid.UUID, ws: WebSocket) -> None:
+    def add(self, user_id: uuid.UUID, ws: WebSocket) -> bool:
+        """Register a connection; True if the user just came online."""
+        first = not self._conns.get(user_id)
         self._conns[user_id].add(ws)
+        return first
 
-    def remove(self, user_id: uuid.UUID, ws: WebSocket) -> None:
+    def remove(self, user_id: uuid.UUID, ws: WebSocket) -> bool:
+        """Drop a connection (and its presence watches); True if the user just went offline."""
+        for watched in list(self._watchers):
+            self._watchers[watched].pop(ws, None)
+            if not self._watchers[watched]:
+                del self._watchers[watched]
         conns = self._conns.get(user_id)
-        if conns:
+        if conns and ws in conns:
             conns.discard(ws)
             if not conns:
                 del self._conns[user_id]
+                return True
+        return False
+
+    def watch(self, watcher: uuid.UUID, ws: WebSocket, target: uuid.UUID) -> None:
+        self._watchers[target][ws] = watcher
+
+    def unwatch(self, ws: WebSocket, target: uuid.UUID) -> None:
+        self._watchers.get(target, {}).pop(ws, None)
+
+    def watchers_of(self, target: uuid.UUID) -> list[tuple[WebSocket, uuid.UUID]]:
+        return list(self._watchers.get(target, {}).items())
 
     def is_online(self, user_id: uuid.UUID) -> bool:
         return bool(self._conns.get(user_id))

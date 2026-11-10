@@ -23,6 +23,7 @@ export class Realtime {
     ws.onopen = () => {
       this.retry = 0;
       this.setConnected(true);
+      this.handlers.get('open')?.forEach((h) => h({ type: 'open' }));  // re-subscribe after reconnects
       this.pinger = window.setInterval(() => this.send({ type: 'ping' }), 25000);
     };
     ws.onmessage = (e) => {

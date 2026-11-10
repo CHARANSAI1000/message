@@ -37,6 +37,8 @@ class Message(Base):
     attachment_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("attachments.id", ondelete="SET NULL"), index=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     edited_at: Mapped[datetime | None]
+    delivered_at: Mapped[datetime | None]  # recipient's device fetched it (✓✓)
+    read_at: Mapped[datetime | None]       # recipient opened it, if they share read receipts (blue ✓✓)
     deleted_at: Mapped[datetime | None]  # "deleted for everyone": ciphertext wiped, tombstone kept
     expires_at: Mapped[datetime] = mapped_column(index=True)
 

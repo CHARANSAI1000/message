@@ -9,6 +9,7 @@ export type ChatMessage = {
   attachment?: AttachmentMeta;
   edited: boolean;
   deleted: boolean;
+  status: 'sent' | 'delivered' | 'read';  // for your own messages: ✓ / ✓✓ / blue ✓✓
   peerId: string;
   outgoing: boolean;
   text: string | null; // null = cannot be decrypted on this browser

@@ -1,5 +1,5 @@
 import {
-  Bell, Camera, Check, Copy, Fingerprint, KeyRound, LogOut, Mail, Monitor, Pencil, Play, ShieldCheck, Smartphone,
+  Bell, Camera, Check, EyeOff, Copy, Fingerprint, KeyRound, LogOut, Mail, Monitor, Pencil, Play, ShieldCheck, Smartphone,
   Trash2, TriangleAlert, X,
 } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
@@ -185,6 +185,21 @@ export function SettingsPage({ vault, me, onMeChange, onSignedOut }: Props) {
               </select>
               <button className="icon-btn" onClick={() => previewRingtone(prefs.ringtone)} aria-label="Play ringtone" title="Preview"><Play size={16} /></button>
             </div>
+          </div>
+        </section>
+
+        <section className="card">
+          <div className="card-header">
+            <span className="card-icon"><EyeOff size={18} /></span>
+            <div><h2>Privacy</h2><p className="small text-3">If you hide something, you can't see it for others either</p></div>
+          </div>
+          <div className="card-body settings-list">
+            <Toggle label="Online & last seen" hint="Let your contacts see when you're online and when you were last active"
+              checked={me.show_presence} onChange={(v) => void run(async () => onMeChange(await profileApi.privacy({ show_presence: v })), '')} />
+            <Toggle label="Read receipts" hint="Blue ticks when you've read a message"
+              checked={me.read_receipts} onChange={(v) => void run(async () => onMeChange(await profileApi.privacy({ read_receipts: v })), '')} />
+            <Toggle label="Find me by email" hint="People who have your email in their phone contacts can find you"
+              checked={me.discoverable} onChange={(v) => void run(async () => onMeChange(await profileApi.privacy({ discoverable: v })), '')} />
           </div>
         </section>
 

@@ -666,3 +666,27 @@ svg { flex-shrink: 0; }
   .call-local { width: 30vw; }
   .call-actions { gap: 28px; }
 }
+
+/* ---------- ticks, typing, presence ---------- */
+.ticks { display: inline-flex; margin-left: 2px; }
+.msg.out .ticks.read { color: #7dd3fc; opacity: 1; }
+.msg.out .ticks { opacity: .85; }
+.li-sub .ticks { color: var(--text-3); margin: 0 2px 0 0; }
+.li-sub .ticks.read { color: #0ea5e9; }
+.chat-status.online, .chat-status.typing, .typing-text { color: var(--success); font-weight: 550; }
+.typing-text { font-style: normal; }
+.typing-bubble { display: inline-flex; gap: 4px; align-items: center; padding: 12px 14px; }
+.typing-bubble i { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); animation: typing 1.2s infinite ease-in-out; }
+.typing-bubble i:nth-child(2) { animation-delay: .15s; }
+.typing-bubble i:nth-child(3) { animation-delay: .3s; }
+@keyframes typing { 0%, 60%, 100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-4px); opacity: 1; } }
+.tip-card {
+  display: flex; align-items: flex-start; gap: 10px; margin: 0 18px 10px; padding: 10px 12px;
+  border-radius: var(--r-md); background: var(--brand-soft); color: var(--brand-text);
+}
+.tip-card svg { flex: none; margin-top: 2px; }
+/* stronger tick contrast on the gradient bubbles */
+.msg.out .bubble-meta { opacity: 1; color: rgba(255, 255, 255, .8); }
+.msg.out .ticks { opacity: 1; color: rgba(255, 255, 255, .8); }
+.msg.out .ticks.read { color: #67e8f9; filter: drop-shadow(0 0 1px rgba(15, 23, 42, .45)); }
+.msg.out .ticks.read svg { stroke-width: 2.6; }

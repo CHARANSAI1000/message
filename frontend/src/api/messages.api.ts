@@ -5,5 +5,7 @@ export const messagesApi = {
   send: (body: NewEnvelope) => request<Envelope>('POST', '/api/v1/messages', body),
   edit: (id: string, iv: string, ciphertext: string) => request<Envelope>('PUT', `/api/v1/messages/${id}`, { iv, ciphertext }),
   deleteForEveryone: (id: string) => request<Envelope>('DELETE', `/api/v1/messages/${id}`),
+  markRead: (peerId: string, upToSeq: number) =>
+    request<void>('POST', '/api/v1/messages/read', { peer_id: peerId, up_to_seq: upToSeq }),
   sync: (after: number) => request<SyncPage>('GET', `/api/v1/messages/sync?after=${after}`),
 };

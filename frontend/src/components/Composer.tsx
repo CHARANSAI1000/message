@@ -12,6 +12,7 @@ type Props = {
   onSaveEdit: (text: string) => void;
   onSendFile: (file: File, kind: 'image' | 'file', caption: string, ttl: number | null) => void;
   onSendVoice: (blob: Blob, seconds: number, ttl: number | null) => void;
+  onTyping?: () => void;
 };
 
 const timerLabel = (s: number | null) => TIMERS.find((t) => t.value === s)?.label ?? 'Off';
@@ -21,7 +22,7 @@ function pickRecorderType(): string {
   return types.find((t) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(t)) ?? '';
 }
 
-export function Composer({ peerName, busy, editingText, onCancelEdit, onSendText, onSaveEdit, onSendFile, onSendVoice }: Props) {
+export function Composer({ peerName, busy, editingText, onCancelEdit, onSendText, onSaveEdit, onSendFile, onSendVoice, onTyping }: Props) {
   const [draft, setDraft] = useState('');
   const [ttl, setTtl] = useState<number | null>(null);
   const [recording, setRecording] = useState<{ start: number; rec: MediaRecorder; stream: MediaStream } | null>(null);
@@ -136,7 +137,7 @@ export function Composer({ peerName, busy, editingText, onCancelEdit, onSendText
         {ttl && !editing && <button type="button" className="timer-chip" onClick={() => setTtl(null)} title="Turn off disappearing"><Timer size={14} /> {timerLabel(ttl)}</button>}
         <textarea ref={input} rows={1} maxLength={MAX_MESSAGE_CHARS} placeholder={editing ? 'Edit message' : `Message ${peerName}`} value={draft}
           aria-label="Message"
-          onChange={(e) => { setDraft(e.target.value); autosize(); }}
+          onChange={(e) => { setDraft(e.target.value); autosize(); if (e.target.value && editingText === null) onTyping?.(); }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit(); }
             if (e.key === 'Escape' && editing) { setDraft(''); onCancelEdit(); }

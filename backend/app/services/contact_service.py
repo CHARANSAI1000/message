@@ -56,3 +56,18 @@ def unblock(db: Session, blocker_id: uuid.UUID, blocked_id: uuid.UUID) -> None:
 
 def is_blocked(db: Session, blocker_id: uuid.UUID, blocked_id: uuid.UUID) -> bool:
     return db.get(Block, (blocker_id, blocked_id)) is not None
+
+
+def discover(db: Session, user_id: uuid.UUID, hashes: list[str]) -> list[Profile]:
+    """Match hashed phone-contact emails against discoverable, verified accounts (hashes are not stored)."""
+    if not hashes:
+        return []
+    digests = [bytes.fromhex(h) for h in hashes]
+    rows = db.execute(
+        user_service.profiles_query().where(
+            User.email_hash.in_(digests), User.discoverable.is_(True), User.email_verified_at.is_not(None),
+            User.id != user_id,
+            ~select(Block.blocker_id).where(Block.blocker_id == User.id, Block.blocked_id == user_id).exists(),
+        ).order_by(User.username)
+    ).all()
+    return [(r[0], r[1]) for r in rows]

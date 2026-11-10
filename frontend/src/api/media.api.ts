@@ -29,6 +29,8 @@ export const profileApi = {
   rename: (username: string) => request<Me>('PATCH', '/api/v1/me', { username }),
   setAvatar: async (image: Blob) => (await raw('PUT', '/api/v1/me/avatar', image, image.type)).json() as Promise<Me>,
   removeAvatar: () => request<void>('DELETE', '/api/v1/me/avatar'),
+  privacy: (patch: { show_presence?: boolean; read_receipts?: boolean; discoverable?: boolean }) =>
+    request<Me>('PATCH', '/api/v1/me/privacy', patch),
 };
 
 export const callsApi = {
@@ -39,4 +41,5 @@ export const pushApi = {
   subscribe: (endpoint: string, p256dh: string, auth: string) =>
     request<void>('POST', '/api/v1/push/subscribe', { endpoint, p256dh, auth }),
   unsubscribe: (endpoint: string) => request<void>('POST', '/api/v1/push/unsubscribe', { endpoint }),
+  registerDevice: (token: string, platform: 'android' | 'ios') => request<void>('POST', '/api/v1/push/device', { token, platform }),
 };

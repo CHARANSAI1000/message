@@ -35,3 +35,5 @@ services:
         sync: false # optional: TURN relay so calls work on strict networks
       - key: CLOUDFLARE_TURN_API_TOKEN
         sync: false
+      - key: FCM_SERVICE_ACCOUNT_JSON
+        sync: false # Firebase service-account JSON (paste the whole file) for Android/iPhone app ringing

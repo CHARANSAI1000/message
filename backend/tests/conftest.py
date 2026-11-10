@@ -10,7 +10,7 @@ os.environ["ENVIRONMENT"] = "test"
 os.environ["SMTP_HOST"] = ""  # never send real email from tests
 os.environ["EMAIL_PROVIDER"] = "smtp"
 os.environ["CLEANUP_INTERVAL_SECONDS"] = "0"  # tests call cleanup explicitly
-for _var in ("VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "TURN_URLS", "CLOUDFLARE_TURN_KEY_ID", "BREVO_API_KEY"):
+for _var in ("VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "TURN_URLS", "CLOUDFLARE_TURN_KEY_ID", "BREVO_API_KEY", "FCM_SERVICE_ACCOUNT_JSON"):
     os.environ[_var] = ""  # tests never use real local secrets
 os.environ["GOOGLE_CLIENT_ID"] = "test-client.apps.googleusercontent.com"
 
@@ -51,7 +51,7 @@ def _app():
 
 @pytest.fixture(autouse=True)
 def clean(_app):
-    sql("TRUNCATE users, sessions, public_keys, contacts, blocks, messages, email_codes, attachments, push_subscriptions CASCADE")
+    sql("TRUNCATE users, sessions, public_keys, contacts, blocks, messages, email_codes, attachments, push_subscriptions, device_tokens CASCADE")
     limiter.reset()
     yield
 

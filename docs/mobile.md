@@ -13,8 +13,8 @@ The apps load your **hosted** ForYou site (`CAP_SERVER_URL`), so sign-in, the st
 
 | | Android | iPhone |
 |---|---|---|
-| Screenshots / screen recording | **Blocked** (`FLAG_SECURE`, shows black) | Not blockable by any app on iOS; screen-recording blanking is planned |
-| App preview in recent apps | Hidden | Planned |
+| Screenshots / screen recording | **Blocked** (`FLAG_SECURE`, shows black) | Screenshots can't be blocked by any iOS app; **screen recording/mirroring shows a blur cover** |
+| App preview in recent apps | Hidden | **Blur cover** |
 | Backups of app data (encryption keys) | **Disabled** (cloud backup and device transfer) | – |
 
 ## Build an Android APK to share
@@ -40,7 +40,16 @@ make ios CAP_SERVER_URL=https://<your-app>.onrender.com   # opens Xcode
 
 In Xcode: select the **App** target → Signing & Capabilities → choose your Team, then Product → Archive → Distribute (TestFlight / App Store).
 
+## Ringing when the app is closed (Firebase)
+
+1. Create a free project at [console.firebase.google.com](https://console.firebase.google.com).
+2. **Android:** Project settings → Add app → Android → package name `com.charansai.foryou`. Download `google-services.json` and put it in `frontend/android/app/`.
+3. **iPhone:** add an iOS app with bundle ID `com.charansai.foryou`. Download `GoogleService-Info.plist` into `frontend/ios/App/App/` (add it to the App target in Xcode). Upload an APNs key (Apple Developer → Keys) under Project settings → Cloud Messaging. In Xcode, add the **Push Notifications** and **Background Modes → Remote notifications** capabilities.
+4. **Server:** Project settings → Service accounts → *Generate new private key*. Paste the whole JSON file into Render as `FCM_SERVICE_ACCOUNT_JSON`. It's a secret: never commit it.
+
+Calls then arrive on Android's high-priority **Calls** channel with the ForYou ringtone (`res/raw/ringtone.wav`) and vibration, even when the app is closed. Tapping the notification opens the app, and the call screen appears.
+
 ## Known gaps (next steps)
 
 - **Google sign-in in the apps:** Google blocks sign-in inside embedded app views, so it must open the phone's browser and return through a deep link (needs an Android SHA-1 / iOS bundle setup in Google Cloud). Email and code sign-in work now.
-- Push notifications with sound/vibration/ringtone (Firebase / APNs), phone contacts, profile pictures, iOS screen-capture protection.
+- Screen sharing from the phone apps (Android WebView has no screen-capture API; it needs a native WebRTC module).

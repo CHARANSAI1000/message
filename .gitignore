@@ -11,3 +11,7 @@ dist/
 backend/static/
 .DS_Store
 coverage/
+
+# Firebase / Google service-account keys are secrets — keep them in host settings only
+*service-account*.json
+*firebase-adminsdk*.json

@@ -123,6 +123,7 @@ git add . && git commit -m "describe change" && git push
 | `CLOUDFLARE_TURN_KEY_ID` / `CLOUDFLARE_TURN_API_TOKEN` | empty | Cloudflare TURN relay for calls |
 | `TURN_URLS` / `TURN_USERNAME` / `TURN_CREDENTIAL` | empty | Any other TURN relay |
 | `MAX_ATTACHMENT_BYTES` | 10 MB | Largest photo/file/voice note |
+| `FCM_SERVICE_ACCOUNT_JSON` | empty | Firebase service account for ringing in the Android/iPhone apps (see mobile.md) |
 
 ## Other hosts
 

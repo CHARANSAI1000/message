@@ -38,6 +38,13 @@ All cryptography uses the browser's built-in WebCrypto API; no custom primitives
 - **Push:** Web Push payloads (encrypted for the browser per RFC 8291) carry only the sender's username and the event type, never message text.
 - **Edit and delete:** edits are re-encrypted by the sender with the original keys. "Delete for everyone" wipes the ciphertext and the attachment on the server. Copies already on the other person's device are removed when it syncs, but screenshots or exports made earlier can't be recalled.
 
+## Receipts, presence and contact discovery
+
+- **Metadata the server now sees:** when a message was delivered and read, when you were last online, and who is typing to whom. That's the same as WhatsApp. Message content stays end-to-end encrypted.
+- **Privacy switches are reciprocal:** turning off read receipts or online/last seen stops recording or sharing yours, and hides other people's from you. Presence is only shown between people with a relationship (contact or conversation), never to strangers or blocked users.
+- **Find friends:** the device sends SHA-256 hashes of contact email addresses. The server matches them against verified, discoverable accounts and keeps nothing. Hashes of emails can be guessed for known addresses, so this mainly protects against casual exposure; the "Find me by email" switch opts you out.
+- **Phone apps:** Android blocks screenshots and screen recording (`FLAG_SECURE`) and disables backups of the app's data, including the keys. iPhone apps can't block screenshots, so ForYou covers the screen while it's being recorded or mirrored, and in the app switcher.
+
 ## Sign-in methods
 
 - **Email verification:** new email accounts can't sign in until a 6-digit code is confirmed. Codes come from `secrets`, are stored only as salted SHA-256 hashes, expire after 10 minutes, are single-use, and die after 5 wrong guesses. Requests and checks are rate-limited per IP and per address.

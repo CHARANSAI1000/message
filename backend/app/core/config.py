@@ -70,6 +70,9 @@ class Settings(BaseSettings):
     vapid_private_key: str = ""
     vapid_subject: str = "mailto:admin@example.com"
 
+    # Firebase Cloud Messaging for the native apps (service-account JSON text, or base64 of it).
+    fcm_service_account_json: str = ""
+
     # Built React app. Served from the same origin, so no CORS is needed.
     static_dir: Path = Path(__file__).resolve().parents[2] / "static"  # backend/static (dev) or /app/static (Docker)
 

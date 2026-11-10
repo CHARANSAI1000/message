@@ -1,26 +1,28 @@
 import { ArrowLeft, Check, Lock, Phone, ShieldAlert, ShieldCheck, ShieldQuestion, Video } from 'lucide-react';
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { usersApi } from '../api';
+import { messagesApi, usersApi } from '../api';
 import { Alert } from '../components/Alert';
 import { Avatar } from '../components/Avatar';
 import { Composer } from '../components/Composer';
 import { MessageBubble } from '../components/MessageBubble';
 import { Modal } from '../components/Modal';
+import { usePeerStatus, useTypingSender } from '../hooks/usePeerStatus';
 import { safetyNumber } from '../services/crypto';
 import { preparePhoto, uploadEncrypted } from '../services/media';
+import type { Realtime } from '../services/realtime';
 import { KeyChangedError, type Vault } from '../services/vault';
 import type { ChatMessage, Pin, User } from '../types';
-import { dayLabel, errorText } from '../utils/format';
+import { dayLabel, errorText, lastSeenLabel } from '../utils/format';
 
 const EDIT_WINDOW_MS = 15 * 60 * 1000;
 
 type Props = {
   vault: Vault; peer: User; messages: ChatMessage[]; blocked: boolean;
   onBack: () => void; onSent: (m: ChatMessage) => void; onPeerRefreshed: (u: User) => void;
-  onHide: (id: string) => void; onCall: (video: boolean) => void; inCall: boolean;
+  onHide: (id: string) => void; onCall: (video: boolean) => void; inCall: boolean; rt: Realtime | null;
 };
 
-export function ConversationPage({ vault, peer, messages, blocked, onBack, onSent, onPeerRefreshed, onHide, onCall, inCall }: Props) {
+export function ConversationPage({ vault, peer, messages, blocked, onBack, onSent, onPeerRefreshed, onHide, onCall, inCall, rt }: Props) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState('');
@@ -31,6 +33,24 @@ export function ConversationPage({ vault, peer, messages, blocked, onBack, onSen
   const [confirmDelete, setConfirmDelete] = useState<ChatMessage | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
+  const { typing: peerTyping, presence } = usePeerStatus(rt, peer.id);
+  const typingSender = useTypingSender(rt, peer.id);
+  const lastRead = useRef(0);
+
+  // Blue ticks: tell the server what we've seen while this chat is open and the app is visible.
+  useEffect(() => {
+    const report = () => {
+      if (document.visibilityState !== 'visible') return;
+      const newest = messages.reduce((max, m) => (!m.outgoing && m.seq > max ? m.seq : max), 0);
+      if (newest > lastRead.current) {
+        lastRead.current = newest;
+        void messagesApi.markRead(peer.id, newest).catch(() => { lastRead.current = 0; });
+      }
+    };
+    report();
+    document.addEventListener('visibilitychange', report);
+    return () => document.removeEventListener('visibilitychange', report);
+  }, [messages, peer.id]);
 
   const reloadPin = () => vault.track(peer).then(() => vault.pin(peer.id)).then(setPin).catch((e) => setError(e.message));
   useEffect(() => { void reloadPin(); }, [peer.id, messages.length]);
@@ -58,7 +78,10 @@ export function ConversationPage({ vault, peer, messages, blocked, onBack, onSen
     }
   };
 
-  const sendText = (text: string, ttl: number | null) => run(async (fresh) => onSent(await vault.send(fresh, text, ttl)));
+  const sendText = (text: string, ttl: number | null) => {
+    typingSender.stop();
+    return run(async (fresh) => onSent(await vault.send(fresh, text, ttl)));
+  };
 
   const sendFile = (file: File, kind: 'image' | 'file', caption: string, ttl: number | null) => run(async (fresh) => {
     setUploading(kind === 'image' ? 'Encrypting photo…' : `Encrypting ${file.name}…`);
@@ -100,11 +123,16 @@ export function ConversationPage({ vault, peer, messages, blocked, onBack, onSen
     setError('');
   };
 
-  const status = pin?.changed
+  const security = pin?.changed
     ? { cls: '', Icon: ShieldAlert, text: 'Safety number changed' }
     : pin?.verified
       ? { cls: 'verified', Icon: ShieldCheck, text: 'Verified · end-to-end encrypted' }
       : { cls: '', Icon: Lock, text: 'End-to-end encrypted' };
+  // Header subtitle priority: typing… > online > last seen > encryption status (WhatsApp-style).
+  const live = peerTyping ? { cls: 'typing', text: 'typing…' }
+    : presence && !presence.hidden && presence.online ? { cls: 'online', text: 'online' }
+    : presence && !presence.hidden && presence.last_seen ? { cls: '', text: lastSeenLabel(presence.last_seen) }
+    : null;
 
   return (
     <>
@@ -113,7 +141,9 @@ export function ConversationPage({ vault, peer, messages, blocked, onBack, onSen
         <Avatar name={peer.username} userId={peer.id} version={peer.avatar_version} />
         <div className="grow">
           <div className="chat-title truncate">{peer.username}</div>
-          <div className={`chat-status ${status.cls}`}><status.Icon size={13} /> {status.text}</div>
+          {live
+            ? <div className={`chat-status ${live.cls}`}>{live.text}</div>
+            : <div className={`chat-status ${security.cls}`}><security.Icon size={13} /> {security.text}</div>}
         </div>
         <button className="icon-btn" onClick={() => onCall(false)} disabled={blocked || inCall || !peer.key} aria-label="Voice call" title="Voice call"><Phone size={19} /></button>
         <button className="icon-btn" onClick={() => onCall(true)} disabled={blocked || inCall || !peer.key} aria-label="Video call" title="Video call"><Video size={20} /></button>
@@ -153,6 +183,7 @@ export function ConversationPage({ vault, peer, messages, blocked, onBack, onSen
             );
           })}
           {uploading && <div className="msg out"><div className="bubble uploading">{uploading}</div></div>}
+          {peerTyping && <div className="msg in"><div className="bubble typing-bubble" aria-label={`${peer.username} is typing`}><i /><i /><i /></div></div>}
         </div>
       </div>
 
@@ -161,7 +192,7 @@ export function ConversationPage({ vault, peer, messages, blocked, onBack, onSen
       ) : (
         <div className="composer-wrap">
           <Composer peerName={peer.username} busy={busy} editingText={editing?.text ?? null} onCancelEdit={() => setEditing(null)}
-            onSendText={sendText} onSaveEdit={saveEdit} onSendFile={sendFile} onSendVoice={sendVoice} />
+            onSendText={sendText} onSaveEdit={saveEdit} onSendFile={sendFile} onSendVoice={sendVoice} onTyping={typingSender.typing} />
           {error && <div className="composer-note"><Alert kind="error">{error}</Alert></div>}
         </div>
       )}

@@ -1,4 +1,4 @@
-import { Ban, Copy, Download, FileText, Lock, MoreVertical, Pencil, Timer, Trash2, Undo2 } from 'lucide-react';
+import { Ban, Check, CheckCheck, Copy, Download, FileText, Lock, MoreVertical, Pencil, Timer, Trash2, Undo2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { DISAPPEARING_TIMERS } from '../constants';
 import { attachmentUrl, formatBytes } from '../services/media';
@@ -95,6 +95,12 @@ export function MessageBubble({ m, gap, canEdit, onEdit, onDeleteForMe, onDelete
           {m.ttlSeconds && !m.deleted && <><Timer size={11} /> {timerLabel(m.ttlSeconds)}<span className="sep">·</span></>}
           {m.edited && !m.deleted && <><span>edited</span><span className="sep">·</span></>}
           {formatClock(m.sentAt)}
+          {m.outgoing && !m.deleted && (
+            <span className={`ticks ${m.status}`} title={m.status === 'read' ? 'Read' : m.status === 'delivered' ? 'Delivered' : 'Sent'}
+              aria-label={m.status}>
+              {m.status === 'sent' ? <Check size={14} /> : <CheckCheck size={14} />}
+            </span>
+          )}
         </div>
       </div>
       <Menu placement={m.outgoing ? 'bottom-end' : 'bottom-start'} trigger={({ toggle, open }) => (

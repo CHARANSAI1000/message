@@ -4,7 +4,7 @@ from fastapi import APIRouter, status
 
 from app.core.rate_limit import limiter
 from app.routers.deps import AuthUser, DbSession
-from app.schemas import UserOut, UsernameIn
+from app.schemas import DiscoverIn, UserOut, UsernameIn
 from app.services import contact_service
 
 router = APIRouter(prefix="/api/v1", tags=["contacts"])
@@ -39,3 +39,10 @@ def block(blocked_id: UUID, user: AuthUser, db: DbSession) -> None:
 @router.delete("/blocks/{blocked_id}", status_code=status.HTTP_204_NO_CONTENT)
 def unblock(blocked_id: UUID, user: AuthUser, db: DbSession) -> None:
     contact_service.unblock(db, user.id, blocked_id)
+
+
+@router.post("/contacts/discover", response_model=list[UserOut])
+def discover(body: DiscoverIn, user: AuthUser, db: DbSession) -> list[UserOut]:
+    """Which of my phone contacts (hashed emails) use ForYou? Hashes are matched, never stored."""
+    limiter.hit(f"discover:{user.id}", limit=10, window_seconds=3600)
+    return [UserOut.from_model(u, k) for u, k in contact_service.discover(db, user.id, body.hashes)]

@@ -19,7 +19,7 @@ from app.core.exceptions import TooManyRequests
 from app.core.rate_limit import limiter
 from app.core.realtime import hub
 from app.routers.deps import AuthUser
-from app.services import call_service, contact_service, push_service, session_service
+from app.services import call_service, contact_service, presence_service, push_service, session_service
 
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["calls"])
@@ -48,6 +48,34 @@ def _blocked(recipient: uuid.UUID, sender: uuid.UUID) -> bool:
         return contact_service.is_blocked(db, blocker_id=recipient, blocked_id=sender)
 
 
+def _presence(viewer: uuid.UUID, target: uuid.UUID) -> dict:
+    with SessionLocal() as db:
+        return presence_service.payload(db, viewer, target, hub.is_online(target))
+
+
+def _touch_last_seen(user_id: uuid.UUID) -> None:
+    with SessionLocal() as db:
+        presence_service.touch_last_seen(db, user_id)
+
+
+async def _broadcast_presence(target: uuid.UUID) -> None:
+    """Tell everyone watching `target` (in an open chat) that they came online / went offline."""
+    for ws, watcher in hub.watchers_of(target):
+        try:
+            await ws.send_json(await asyncio.to_thread(_presence, watcher, target))
+        except Exception:
+            pass
+
+
+_background: set[asyncio.Task] = set()
+
+
+async def _went_offline(user_id: uuid.UUID) -> None:
+    await asyncio.to_thread(_touch_last_seen, user_id)
+    if not hub.is_online(user_id):  # they may have reconnected meanwhile
+        await _broadcast_presence(user_id)
+
+
 def _take_pending(user_id: uuid.UUID) -> list[dict]:
     now = time.monotonic()
     events = [e for t, _, e in _pending.pop(user_id, []) if now - t < RING_SECONDS]
@@ -66,7 +94,8 @@ async def realtime(ws: WebSocket) -> None:
         return
 
     await ws.accept()
-    hub.add(user.id, ws)
+    if hub.add(user.id, ws):
+        await _broadcast_presence(user.id)
     try:
         for event in _take_pending(user.id):  # ring for calls that started while we were offline
             await ws.send_json(event)
@@ -85,13 +114,20 @@ async def realtime(ws: WebSocket) -> None:
     except Exception:
         log.exception("WebSocket error")
     finally:
-        hub.remove(user.id, ws)
+        if hub.remove(user.id, ws):
+            # Separate task: the handler itself may be cancelled while closing.
+            task = asyncio.get_running_loop().create_task(_went_offline(user.id))
+            _background.add(task)
+            task.add_done_callback(_background.discard)
 
 
 async def _handle(ws: WebSocket, user, msg: dict) -> None:
     kind = msg.get("type")
     if kind == "ping":
         await ws.send_json({"type": "pong"})
+        return
+    if kind in ("typing", "presence_watch", "presence_unwatch"):
+        await _handle_status(ws, user, kind, msg)
         return
     if kind != "signal":
         return
@@ -121,3 +157,20 @@ async def _handle(ws: WebSocket, user, msg: dict) -> None:
         _pending[to] = [p for p in _pending.get(to, []) if p[1] != user.id]
         if not _pending[to]:
             _pending.pop(to, None)
+
+
+async def _handle_status(ws: WebSocket, user, kind: str, msg: dict) -> None:
+    try:
+        target = uuid.UUID(str(msg.get("to") or msg.get("user")))
+        limiter.hit(f"status:{user.id}", limit=300, window_seconds=60)
+    except (TooManyRequests, ValueError):
+        return
+    if target == user.id:
+        return
+    if kind == "presence_watch":
+        hub.watch(user.id, ws, target)
+        await ws.send_json(await asyncio.to_thread(_presence, user.id, target))
+    elif kind == "presence_unwatch":
+        hub.unwatch(ws, target)
+    elif kind == "typing" and not await asyncio.to_thread(_blocked, target, user.id):
+        await hub.send(target, {"type": "typing", "from": str(user.id), "state": bool(msg.get("state"))})

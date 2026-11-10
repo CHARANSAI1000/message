@@ -17,6 +17,10 @@
 | Screen sharing | Share your screen during a call | Desktop browsers; not available in mobile browsers |
 | Notifications | Ring and notify while closed (Web Push), sounds, silent mode, vibration, 3 ringtones | Implemented (Android Chrome, desktop; iPhone needs Home Screen install) |
 | Profile | Change username, profile photo | Implemented |
+| Ticks | Sent ✓, delivered ✓✓, read (blue ✓✓); reciprocal "read receipts" privacy switch | Implemented |
+| Typing / presence | "typing…", online, last seen; reciprocal privacy switch; hidden from strangers and blocked users | Implemented |
+| Find friends | Match phone-contact emails (SHA-256 hashed, never stored); opt-out "Find me by email" | Android Chrome (contact picker) and the native apps |
+| Native apps | Android/iPhone projects, Firebase ringing with ringtone channel, Android screenshot blocking, iPhone recording/app-switcher privacy cover | Code written; not yet compiled (needs Android Studio / Xcode) |
 | Disappearing | Per-message timers (5 min – 1 week); server-side 30-day retention cap | Implemented |
 | Verification | Safety numbers, key pinning (TOFU), key-change warning that blocks sending | Implemented |
 | Contacts | Add by exact username (no directory), remove, block/unblock | Implemented |
@@ -27,7 +31,6 @@
 | Recovery | Password reset by email code (implemented). Encryption-key backup | Key backup not implemented: a new device creates a new key |
 | Groups | Group chats | Not implemented |
 | Group calls | Calls with more than two people | Not implemented (needs a media server such as LiveKit) |
-| Privacy extras | Read receipts, typing, online status | Not implemented (none are collected) |
 | App lock | Local passcode / biometric | Not implemented |
 
 Stories, status updates, and broadcast lists remain out of scope.

@@ -5,7 +5,8 @@ from fastapi import APIRouter, Request, Response, status
 from app.core.rate_limit import limiter
 from app.routers.auth import me_out
 from app.routers.deps import AuthUser, DbSession
-from app.schemas import Me, UsernameChange
+from app.models import User
+from app.schemas import Me, PrivacyIn, UsernameChange
 from app.services import profile_service, user_service
 
 router = APIRouter(prefix="/api/v1", tags=["profile"])
@@ -36,3 +37,14 @@ def get_avatar(user_id: UUID, user: AuthUser, db: DbSession) -> Response:
     return Response(data, media_type=mime, headers={"cache-control": "private, max-age=86400"})
 
 
+
+
+@router.patch("/me/privacy", response_model=Me)
+def update_privacy(body: PrivacyIn, user: AuthUser, db: DbSession) -> Me:
+    me = db.get_one(User, user.id)
+    for field in ("show_presence", "read_receipts", "discoverable"):
+        value = getattr(body, field)
+        if value is not None:
+            setattr(me, field, value)
+    db.commit()
+    return me_out(db, me)
